@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+target_user="play"
+target_path="/home/$target_user/.kube/config"
+
+if [ -z "$SSH_PRIVATE_KEY" -o ! -f "$SSH_PRIVATE_KEY" ]; then
+    echo "SSH_PRIVATE_KEY env var is required and must reference an ssh private key file"
+    exit 99
+fi
+
+if [ $# -lt "1" ]; then
+    echo "usage: $0 kubelab1.config kubelab2.config ... "
+    echo "the names must match the hostnames of the target machines"
+    exit 98
+fi
+
+for f in "$@"; do
+
+    if [ ! -f "$f" ]; then
+        echo "kube config file $f does not exist!"
+        exit 98
+    fi
+
+    filename="$(basename "$f")"
+    clustername="${filename%%.*}"
+    host="${clustername#kube}"
+
+    echo "host: $host"
+
+    gcloud compute ssh --zone=us-west1-b --ssh-key-file="$SSH_PRIVATE_KEY" "$target_user@$host" -- "mkdir -p \$HOME/.kube"
+
+    gcloud compute scp --zone=us-west1-b --ssh-key-file="$SSH_PRIVATE_KEY" "$f" "$target_user@$host:\$HOME/.kube/config"
+
+done

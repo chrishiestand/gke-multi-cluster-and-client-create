@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+project_name="${1-}"
+public_key="${2-}"
+startup_script_url="${3-}"
+num="${4-}"
+
+function usage {
+    echo "usage: $0 project-name ssh-pub-key-path public-url number"
+    echo "example: $0 my-project ~/.ssh/ssh-key.pub https://storage.googleapis.com/kistek-training/kube-client-instance-setup.sh 3"
+}
+
+if [ -z "$project_name" ]; then
+    usage
+    exit 99
+fi
+
+if [ -z "$startup_script_url" ]; then
+    usage
+    exit 98
+fi
+
+if [ ! -f "$public_key" ]; then
+    usage
+    exit 97
+fi
+
+if [ -z "$num" ]; then
+    usage
+    exit 96
+fi
+
+gcloud --project "$project_name" compute instances create lab$num --zone us-west1-b --tags=labvm,http-server,https-server --image-project debian-cloud --image-family debian-9 --machine-type f1-micro --metadata-from-file ssh-keys="$public_key" --metadata startup-script-url="$startup_script_url" --scopes https://www.googleapis.com/auth/devstorage.read_write,https://www.googleapis.com/auth/logging.write

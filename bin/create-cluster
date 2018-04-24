@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+PROJECT_PATH="$( cd "$( dirname "$0" )/.." && pwd )"
+
+num="${1-}"
+
+if [ -z "$num" ]; then
+    echo "usage: $0 number"
+    exit 99
+fi
+
+CLUSTERNAME="kubelab$num"
+export KUBECONFIG="$PROJECT_PATH/kubeconfig/$CLUSTERNAME.config"
+export CLOUDSDK_CONTAINER_USE_CLIENT_CERTIFICATE=True
+
+if [ -f "$KUBECONFIG" ]; then
+    echo "already a config file at $KUBECONFIG, will not overwrite or merge"
+    exit 98
+fi
+mkdir -p "$(dirname $KUBECONFIG)"
+
+# --enable-legacy-authorization is required in order to export the credentials for a non-gcloud installation of kubectl
+gcloud container clusters create $CLUSTERNAME --node-locations=us-west1-b,us-west1-c --enable-legacy-authorization --cluster-version=1.9.6-gke.1 --no-enable-cloud-monitoring --machine-type=g1-small --num-nodes=1
+
+echo "cluster created: $CLUSTERNAME"
+
+gcloud container clusters get-credentials --zone us-west1-b $CLUSTERNAME
+
+echo "got credentials for $CLUSTERNAME. done"
